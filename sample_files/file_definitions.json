@@ -1,0 +1,56 @@
+{
+    "file_definitions": [
+        {
+            "file_description": "Valid csv files",
+            "file_mask": "Valid-*.csv",
+            "file_type": "DELIMITED",
+            "has_header": true,
+            "delimiter": ",",
+            "input_directory": "/users/asmitty/workspace/file-ripper-py/sample_files/delimited/",
+            "completed_directory": "/users/asmitty/workspace/file-ripper-py/sample_files/delimited/done",
+            "export_definition": {
+                "export_type": "API",
+                "api_url": "https://ohgnarly3.herokuapp.com/person"
+            },
+            "field_definitions": [
+                {
+                    "field_name": "name"
+                },
+                {
+                    "field_name": "age"
+                },
+                {
+                    "field_name": "dob"
+                }
+            ]
+        },
+        {
+            "file_description": "Valid fixed files",
+            "file_mask": "Fixed-*.txt",
+            "file_type": "FIXED",
+            "has_header": false,
+            "input_directory": "/users/asmitty/workspace/file-ripper-py/sample_files/fixed/",
+            "export_definition": {
+                "export_type": "API",
+                "api_url": "https://ohgnarly3-staging.herokuapp.com/person"
+            },
+            "field_definitions": [
+                {
+                    "field_name": "name",
+                    "start_position": 0,
+                    "field_length": 20
+                },
+                {
+                    "field_name": "age",
+                    "start_position": 20,
+                    "field_length": 4
+                },
+                {
+                    "field_name": "dob",
+                    "start_position": 24,
+                    "field_length": 10
+                }
+            ]
+        }
+    ]
+}
