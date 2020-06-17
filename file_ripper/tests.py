@@ -4,23 +4,22 @@ import unittest
 from unittest.mock import MagicMock, Mock
 
 import fileconstants as fc
-from filedefinition import FileDefinition, create_file_definitions, ExportDefinition, FieldDefinition
 from file_ripper_process.process import process_file_definition, execute_process
-from databaseutils import MongoDbSender, create_db_sender
-from fileservice import create_file_service, XmlFileService, DelimitedFileService, FixedFileService
-from dataexport import create_data_exporter, ApiExporter, DatabaseExporter, FileExporter
+from filedefinition import FileDefinition, create_file_definitions, FieldDefinition
+from fileripper import FileRipper
+from fileservice import create_file_service, XmlFileService, DelimitedFileService, FixedFileService, FileService
 
 
-class FileRipperTests(unittest.TestCase):
+class FileRipperProcessTests(unittest.TestCase):
     def setUp(self):
-        self.json_data = FileRipperTests.create_file_def_json()
+        self.json_data = self.create_file_def_json()
         self.file_name = 'Valid-09092019.csv'
         self.definitions_file = 'file_definitions.json'
         with open(self.file_name, 'w') as file:
             file.write("Name,Age,DOB\n")
             file.write("Jason,99,01/01/1970")
         with open(self.definitions_file, 'w') as file:
-            file.write(json.dumps(FileRipperTests.create_file_defs_json(self.json_data)))
+            file.write(json.dumps(self.create_file_defs_json(self.json_data)))
 
     def test_process_file_definition_given_delimited_file(self):
         file_definition = FileDefinition(self.json_data)
@@ -37,8 +36,10 @@ class FileRipperTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.file_name)
-            os.remove(self.definitions_file)
+            if self.file_name:
+                os.remove(self.file_name)
+            if self.definitions_file:
+                os.remove(self.definitions_file)
         except Exception as ex:
             print(ex)
 
@@ -292,38 +293,8 @@ class FileConstantsTests(unittest.TestCase):
         self.assertEqual(fc.DATABASE_NAME, 'database_name')
 
 
-class CreateDbSenderTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.export_definition = ExportDefinition({fc.EXPORT_TYPE: fc.DATABASE_EXPORT,
-                                                   fc.DB_CONNECTION_STRING: 'connection_string',
-                                                   fc.DATABASE_NAME: 'database_name',
-                                                   fc.COLLECTION_NAME: 'collection_name'})
-
-    def test_send_data(self) -> None:
-        sender = create_db_sender(self.export_definition)
-        self.assertTrue(isinstance(sender, MongoDbSender))
-        self.assertEqual(sender.collection_name, 'collection_name')
-        self.assertEqual(sender.database_name, 'database_name')
-        self.assertEqual(sender.connection_string, 'connection_string')
-
-
-class MongoDbSenderTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.export_definition = ExportDefinition({
-            fc.EXPORT_TYPE: fc.DATABASE_EXPORT,
-            fc.COLLECTION_NAME: 'People',
-            fc.DATABASE_NAME: 'gnarly_test',
-            fc.DB_CONNECTION_STRING: 'mongodb+srv://dbuser:OhGnarly123@cluster0-hds1u.mongodb.net/test?retryWrites=true&w=majority'
-        })
-
-    def test_send_data(self):
-        mongo_sender = MongoDbSender(self.export_definition)
-        result = mongo_sender.send_data([{'name': 'Jim', 'age': 45, 'dob': '08/15/1974'}])
-        self.assertIsNotNone(result)
-
-
 class CreateFileServiceTests(unittest.TestCase):
-    """Test cases for file ripper code"""
+    """Test cases for file service factory function code"""
     def setUp(self):
         self.file_data = {
             fc.FILE_MASK: "",
@@ -339,13 +310,13 @@ class CreateFileServiceTests(unittest.TestCase):
             ]
         }
 
-    def test_create_file_service_given_xml_file_definition(self):
+    def test_create_file_service_xml_file_definition(self):
         """Create xml file service given and xml file definition"""
         file_definition = self.create_file_definition(fc.XML, 'record')
         file_service = create_file_service(file_definition)
         self.assertTrue(isinstance(file_service, XmlFileService))
 
-    def test_create_file_service_given_delimited_file_definition(self):
+    def test_create_file_service_delimited_file_definition(self):
         """Create delimited file service given a delimited file definition"""
         # arrange
         self.file_data[fc.DELIMITER] = "\t"
@@ -355,7 +326,7 @@ class CreateFileServiceTests(unittest.TestCase):
         # assert
         self.assertTrue(isinstance(file_service, DelimitedFileService))
 
-    def test_create_file_service_given_fixed_file_definition(self):
+    def test_create_file_service_fixed_file_definition(self):
         """Create fixed file service given fixed file definition"""
         self.file_data[fc.FIELD_DEFINITIONS][0][fc.START_POSITION] = '0'
         self.file_data[fc.FIELD_DEFINITIONS][0][fc.FIELD_LENGTH] = '12'
@@ -363,7 +334,7 @@ class CreateFileServiceTests(unittest.TestCase):
         file_service = create_file_service(file_definition)
         self.assertTrue(isinstance(file_service, FixedFileService))
 
-    def test_create_file_service_given_invalid_file_type(self):
+    def test_create_file_service_invalid_file_type(self):
         """Raise value error when invalid file type is created"""
         file_definition = self.create_file_definition('file_type')
         self.assertRaises(ValueError, create_file_service, file_definition)
@@ -424,9 +395,14 @@ class FileServiceTests(unittest.TestCase):
         self.assertEqual('4', file_output[fc.RECORDS][2]['age'])
         self.assertEqual('11/22/2014', file_output[fc.RECORDS][2]['dob'])
 
+    def test_process_records_not_implemented(self):
+        file_service = FileService()
+        self.assertRaises(NotImplementedError, file_service.process_file_records, [])
+
     def tearDown(self):
         try:
-            os.remove(self.file_name)
+            if self.file_name:
+                os.remove(self.file_name)
         except Exception as ex:
             print(ex)
 
@@ -518,45 +494,6 @@ class XmlFileServiceTests(FileServiceTests):
             self.assertRaises(AttributeError, self.file_service.process, file)
 
 
-class CreateDataExporterTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.export_data = {}
-
-    def test_create_data_exporter_given_api_export_type(self):
-        self.export_data[fc.EXPORT_TYPE] = fc.API_EXPORT
-        self.export_data[fc.API_URL] = 'api url'
-        export_definition = ExportDefinition(self.export_data)
-        data_exporter = create_data_exporter(export_definition)
-        self.assertTrue(isinstance(data_exporter, ApiExporter))
-
-    def test_create_data_exporter_given_database_export_type(self):
-        self.export_data[fc.EXPORT_TYPE] = fc.DATABASE_EXPORT
-        self.export_data[fc.DB_CONNECTION_STRING] = 'connection string'
-        export_definition = ExportDefinition(self.export_data)
-        data_exporter = create_data_exporter(export_definition)
-        self.assertTrue(isinstance(data_exporter, DatabaseExporter))
-
-    def test_create_data_exporter_given_file_export_type(self):
-        self.export_data[fc.EXPORT_TYPE] = fc.FILE_EXPORT
-        self.export_data[fc.OUTPUT_FILE_PATH] = 'output file path'
-        export_definition = ExportDefinition(self.export_data)
-        data_exporter = create_data_exporter(export_definition)
-        self.assertTrue(isinstance(data_exporter, FileExporter))
-
-
-class ApiExporterTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.api_url = 'api url'
-        self.api_sender = Mock()
-        self.headers = {}
-        self.api_exporter = ApiExporter(self.api_url, self.headers, self.api_sender)
-
-    def test_export_data(self):
-        data = {}
-        self.api_exporter.export_data(data)
-        self.api_sender.assert_called_with(data, self.headers, self.api_url)
-
-
 class DatabaseExporterTests(unittest.TestCase):
     def setUp(self) -> None:
         pass
@@ -565,12 +502,59 @@ class DatabaseExporterTests(unittest.TestCase):
         pass
 
 
-class FileRipper2Tests(unittest.TestCase):
+class FileRipper2Tests(FileServiceTests):
     def setUp(self) -> None:
-        pass
+        super(FileRipper2Tests, self).setUp()
+
+        self.file_service = FileService()
+        file_service_factory = Mock(return_value=self.file_service)
+
+        self.expected = {}
+        self.file_service.process = Mock(return_value=self.expected)
+
+        self.file_data[fc.FILE_TYPE] = fc.FIXED
+        self.file_ripper = FileRipper(file_service_factory)
+        self.file_definition = FileDefinition(self.file_data)
 
     def test_rip_file_returns_file_output(self):
-        pass
+        file_names = self.create_files()
+        with open(file_names[0], 'r') as file:
+            actual = self.file_ripper.rip_file(file, self.file_definition)
+        self.assertIs(self.expected, actual)
+        self.delete_files()
+
+    def test_rip_file_not_a_file(self):
+        self.file_service.process = Mock(side_effect=AttributeError)
+        self.assertRaises(AttributeError, self.file_ripper.rip_file, {}, self.file_definition)
+
+    def test_rip_files_returns_file_output_list(self):
+        file_count = 2
+        file_names = self.create_files(file_count)
+        for file_name in file_names:
+            with open(file_name, 'r') as file:
+                files = [file for _ in range(0, 2)]
+                actual = self.file_ripper.rip_files(files, self.file_definition)
+                self.assertEqual(len(files), len(actual))
+                [self.assertIs(self.expected, a) for a in actual]
+        self.delete_files(file_count)
+
+    def test_rip_files_not_files(self):
+        self.file_service.process = Mock(side_effect=AttributeError)
+        self.assertRaises(AttributeError, self.file_ripper.rip_files, [{}, {}], self.file_definition)
+
+    @staticmethod
+    def create_files(total_files=1):
+        file_names = []
+        for i in range(0, total_files):
+            with open(f'Valid-{i}.txt', 'w') as file:
+                file_names.append(file.name)
+                file.write(f'hello from {i}')
+        return file_names
+
+    @staticmethod
+    def delete_files(total_files=1):
+        for i in range(0, total_files):
+            os.remove(f'Valid-{i}.txt')
 
 
 if __name__ == '__main__':

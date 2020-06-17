@@ -15,12 +15,17 @@ def create_file_service(file_definition):
         raise ValueError(f'file_definition is configured for unsupported file_type: {file_definition.file_type}')
 
 
-class XmlFileService:
-    def __init__(self, file_definition):
-        self.file_definition = file_definition
-
+class FileService:
     def process(self, file: IO):
         return {fc.FILE_NAME: file.name, fc.RECORDS: self.process_file_records(file.readlines())}
+
+    def process_file_records(self, lines):
+        raise NotImplementedError('Please use a valid implementation of FileService to read files')
+
+
+class XmlFileService(FileService):
+    def __init__(self, file_definition):
+        self.file_definition = file_definition
 
     def process_file_records(self, lines):
         tree = fromstring(''.join(lines))
@@ -35,12 +40,9 @@ class XmlFileService:
         return records
 
 
-class DelimitedFileService:
+class DelimitedFileService(FileService):
     def __init__(self, file_definition):
         self.file_definition = file_definition
-
-    def process(self, file: IO):
-        return {fc.FILE_NAME: file.name, fc.RECORDS: self.process_file_records(file.readlines())}
 
     def process_file_records(self, lines):
         records = []
@@ -65,15 +67,9 @@ class DelimitedFileService:
         return record
 
 
-class FixedFileService:
+class FixedFileService(FileService):
     def __init__(self, file_definition):
         self.file_definition = file_definition
-
-    def process(self, file: IO):
-        return {
-            fc.FILE_NAME: file.name,
-            fc.RECORDS: self.process_file_records(file.readlines())
-        }
 
     def process_file_records(self, lines):
         records = []

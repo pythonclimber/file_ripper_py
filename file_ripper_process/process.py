@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from glob import glob
 
-from file_ripper.dataexport import create_data_exporter
+from file_ripper_data.dataexport import create_data_exporter
 from file_ripper.filedefinition import create_file_definitions, FileDefinition
 from file_ripper.filelogger import create_file_ripper_logger
 from file_ripper.fileservice import create_file_service

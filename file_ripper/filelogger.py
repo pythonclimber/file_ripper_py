@@ -1,8 +1,9 @@
 import logging
 from os import path, mkdir
+from logging.handlers import TimedRotatingFileHandler
 
 
-log_directory = 'users/asmitty/workspace/file_ripper-py/logs'
+log_directory = '/Users/asmitty/workspace/python/file_ripper_py/file_ripper/logs'
 log_file_name = 'file_ripper_logs.txt'
 
 
@@ -18,9 +19,9 @@ def create_file_ripper_logger():
 
 
 def create_file_handler(formatter):
-    if not path.exists('logs'):
-        mkdir('logs')
-    handler = logging.FileHandler(path.join('logs', log_file_name), encoding='UTF-8')
+    if not path.exists(log_directory):
+        mkdir(log_directory)
+    handler = TimedRotatingFileHandler(path.join(log_directory, log_file_name), encoding='UTF-8')
     handler.setFormatter(formatter)
     return handler
 

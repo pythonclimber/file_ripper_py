@@ -1,19 +1,16 @@
-from typing import IO
+from typing import IO, List
 
 from filedefinition import FileDefinition
 from fileservice import create_file_service
 
 
 class FileRipper:
-    def __init__(self, file_service_factory=None):
+    def __init__(self, file_service_factory=None, file_repository=None):
         self.file_service_factory = file_service_factory if file_service_factory is not None else create_file_service
 
     def rip_file(self, file: IO, file_definition: FileDefinition):
-        # file_service = create_file_service(file_definition)
-        pass
+        file_service = self.file_service_factory(file_definition)
+        return file_service.process(file)
 
-    def rip_files(self, files: list[IO], file_definition: FileDefinition):
-        pass
-
-    def find_and_rip_files(self, files_path: str, file_definition: FileDefinition):
-        pass
+    def rip_files(self, files: List[IO], file_definition: FileDefinition):
+        return [self.rip_file(f, file_definition) for f in files]
