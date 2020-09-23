@@ -1,74 +1,11 @@
-import json
 import os
 import unittest
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import fileconstants as fc
-from file_ripper_process.process import process_file_definition, execute_process
 from filedefinition import FileDefinition, create_file_definitions, FieldDefinition
 from fileripper import FileRipper
-from fileservice import create_file_service, XmlFileService, DelimitedFileService, FixedFileService, FileService
-
-
-class FileRipperProcessTests(unittest.TestCase):
-    def setUp(self):
-        self.json_data = self.create_file_def_json()
-        self.file_name = 'Valid-09092019.csv'
-        self.definitions_file = 'file_definitions.json'
-        with open(self.file_name, 'w') as file:
-            file.write("Name,Age,DOB\n")
-            file.write("Jason,99,01/01/1970")
-        with open(self.definitions_file, 'w') as file:
-            file.write(json.dumps(self.create_file_defs_json(self.json_data)))
-
-    def test_process_file_definition_given_delimited_file(self):
-        file_definition = FileDefinition(self.json_data)
-        data_sender = MagicMock()
-        file_mover = MagicMock()
-        process_file_definition(file_definition, data_sender, file_mover)
-        data_sender.assert_called_once()
-        file_mover.assert_called_once()
-
-    def test_execute_process(self):
-        file_processor = MagicMock()
-        execute_process(self.definitions_file, file_processor)
-        file_processor.assert_called_once()
-
-    def tearDown(self):
-        try:
-            if self.file_name:
-                os.remove(self.file_name)
-            if self.definitions_file:
-                os.remove(self.definitions_file)
-        except Exception as ex:
-            print(ex)
-
-    @staticmethod
-    def create_file_def_json():
-        return {
-            fc.FILE_MASK: 'Valid-*.csv',
-            fc.FILE_TYPE: fc.DELIMITED,
-            fc.DELIMITER: ',',
-            fc.HAS_HEADER: True,
-            fc.INPUT_DIRECTORY: os.getcwd(),
-            fc.FIELD_DEFINITIONS: [
-                {fc.FIELD_NAME: 'name'},
-                {fc.FIELD_NAME: 'age'},
-                {fc.FIELD_NAME: 'dob'}
-            ],
-            fc.EXPORT_DEFINITION: {
-                fc.EXPORT_TYPE: fc.API_EXPORT,
-                fc.API_URL: 'http://www.google.com'
-            }
-        }
-
-    @staticmethod
-    def create_file_defs_json(file_def):
-        return {
-            fc.FILE_DEFINITIONS: [
-                file_def
-            ]
-        }
+from fileservice import XmlFileService, DelimitedFileService, FixedFileService, FileService
 
 
 class FileDefinitionTests(unittest.TestCase):
@@ -295,6 +232,7 @@ class FileConstantsTests(unittest.TestCase):
 
 class CreateFileServiceTests(unittest.TestCase):
     """Test cases for file service factory function code"""
+
     def setUp(self):
         self.file_data = {
             fc.FILE_MASK: "",
@@ -313,7 +251,7 @@ class CreateFileServiceTests(unittest.TestCase):
     def test_create_file_service_xml_file_definition(self):
         """Create xml file service given and xml file definition"""
         file_definition = self.create_file_definition(fc.XML, 'record')
-        file_service = create_file_service(file_definition)
+        file_service = FileService.create_file_service(file_definition)
         self.assertTrue(isinstance(file_service, XmlFileService))
 
     def test_create_file_service_delimited_file_definition(self):
@@ -322,7 +260,7 @@ class CreateFileServiceTests(unittest.TestCase):
         self.file_data[fc.DELIMITER] = "\t"
         file_definition = self.create_file_definition(fc.DELIMITED)
         # act
-        file_service = create_file_service(file_definition)
+        file_service = FileService.create_file_service(file_definition)
         # assert
         self.assertTrue(isinstance(file_service, DelimitedFileService))
 
@@ -331,13 +269,13 @@ class CreateFileServiceTests(unittest.TestCase):
         self.file_data[fc.FIELD_DEFINITIONS][0][fc.START_POSITION] = '0'
         self.file_data[fc.FIELD_DEFINITIONS][0][fc.FIELD_LENGTH] = '12'
         file_definition = self.create_file_definition(fc.FIXED)
-        file_service = create_file_service(file_definition)
+        file_service = FileService.create_file_service(file_definition)
         self.assertTrue(isinstance(file_service, FixedFileService))
 
     def test_create_file_service_invalid_file_type(self):
         """Raise value error when invalid file type is created"""
         file_definition = self.create_file_definition('file_type')
-        self.assertRaises(ValueError, create_file_service, file_definition)
+        self.assertRaises(ValueError, FileService.create_file_service, file_definition)
 
     def create_file_definition(self, file_type, record_element_name=None):
         self.file_data[fc.FILE_TYPE] = file_type
@@ -438,7 +376,7 @@ class FixedFileServiceTests(FileServiceTests):
         super(FixedFileServiceTests, self).setUp()
         self.file_data[fc.FILE_TYPE] = fc.FIXED
         self.file_definition = FileDefinition(self.file_data)
-        self.file_service = create_file_service(self.file_definition)
+        self.file_service = FileService.create_file_service(self.file_definition)
         self.file_name = 'Valid-fixed-09032019.txt'
         with open(self.file_name, 'w') as f:
             f.write('Name         Age      DOB       \n')

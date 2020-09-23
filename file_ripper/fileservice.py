@@ -4,23 +4,23 @@ from xml.etree.ElementTree import fromstring, parse
 import fileconstants as fc
 
 
-def create_file_service(file_definition):
-    if file_definition.file_type == fc.XML:
-        return XmlFileService(file_definition)
-    elif file_definition.file_type == fc.DELIMITED:
-        return DelimitedFileService(file_definition)
-    elif file_definition.file_type == fc.FIXED:
-        return FixedFileService(file_definition)
-    else:
-        raise ValueError(f'file_definition is configured for unsupported file_type: {file_definition.file_type}')
-
-
 class FileService:
     def process(self, file: IO):
         return {fc.FILE_NAME: file.name, fc.RECORDS: self.process_file_records(file.readlines())}
 
     def process_file_records(self, lines):
         raise NotImplementedError('Please use a valid implementation of FileService to read files')
+
+    @staticmethod
+    def create_file_service(file_definition):
+        if file_definition.file_type == fc.XML:
+            return XmlFileService(file_definition)
+        elif file_definition.file_type == fc.DELIMITED:
+            return DelimitedFileService(file_definition)
+        elif file_definition.file_type == fc.FIXED:
+            return FixedFileService(file_definition)
+        else:
+            raise ValueError(f'file_definition is configured for unsupported file_type: {file_definition.file_type}')
 
 
 class XmlFileService(FileService):

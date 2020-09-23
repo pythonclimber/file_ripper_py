@@ -26,9 +26,6 @@ def validate_file_data(file_data):
     if fc.EXPORT_DEFINITION not in file_data:
         raise ValueError(f'{fc.EXPORT_DEFINITION} is a required property')
 
-    if fc.INPUT_DIRECTORY not in file_data:
-        raise ValueError(f'{fc.INPUT_DIRECTORY} is a required property')
-
 
 class FieldDefinition:
     def __init__(self, file_data, file_type):
@@ -76,7 +73,7 @@ class FileDefinition:
         self.file_type = file_data[fc.FILE_TYPE]
         self.export_definition = ExportDefinition(file_data[fc.EXPORT_DEFINITION])
         self.has_header = file_data[fc.HAS_HEADER] if fc.HAS_HEADER in file_data else False
-        self.input_directory = file_data[fc.INPUT_DIRECTORY]
+        self.input_directory = file_data[fc.INPUT_DIRECTORY] if fc.INPUT_DIRECTORY in file_data else ''
         self.completed_directory = file_data[fc.COMPLETED_DIRECTORY] if fc.COMPLETED_DIRECTORY in file_data \
             else path.join(self.input_directory, 'completed')
         self.file_description = file_data[fc.FILE_DESCRIPTION] if fc.FILE_DESCRIPTION in file_data else ''

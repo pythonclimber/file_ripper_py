@@ -1,12 +1,13 @@
 from typing import IO, List
 
 from filedefinition import FileDefinition
-from fileservice import create_file_service
+from fileservice import FileService
 
 
 class FileRipper:
     def __init__(self, file_service_factory=None, file_repository=None):
-        self.file_service_factory = file_service_factory if file_service_factory is not None else create_file_service
+        self.file_service_factory = file_service_factory if file_service_factory is not None \
+            else FileService.create_file_service
 
     def rip_file(self, file: IO, file_definition: FileDefinition):
         file_service = self.file_service_factory(file_definition)
